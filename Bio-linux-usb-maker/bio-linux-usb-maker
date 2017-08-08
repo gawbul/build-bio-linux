@@ -1,0 +1,701 @@
+#!/bin/bash
+
+#A beefed up version of remaster_usb that can make multiple
+#USB memory sticks on the fly.
+# On 28/11 : Added setup for munged permissions on home directory.
+#	     Made it work with CD or DVD
+# On 26/03/10 : Working on new version for Ununtu 10.04.  Using file rather
+#               than partition and eliminating HAL calls.
+# On 20/6/14 : Updated for Bio-Linux 8 (Ubuntu 14.04) incorporating patches
+#              from Tony T and switching back to making 2 partitions unless
+#              NOREPARTITION is set, also hopefully fixing the issues with
+#              persistence not always being activated.
+# On 25/6/14 : Fixed to work without hal, since hal is deprecated.  See
+#              http://stackoverflow.com/questions/13288299/replacement-for\
+#               -hal-get-property-and-hal-find-by-capability-in-udev
+#              and also the manpage for udisks and the locking thereof
+
+#0 Precautions
+set -o errtrace
+set -o nounset
+trap exit ERR
+
+DEBUG=${DEBUG:-} #Run env DEBUG=1 bio-linux-usb-maker to debug
+#Some don't like being repartitioned!  If the stick is not partitioned,
+#make a casper-rw file rather than a partition.
+NOREPARTITION=${NOREPARTITION:-}
+
+#Exit if not root, because the behaviour can be confusing.
+#Remove this bit if you want to be able to scan devices as a normal user.
+if [[ `id -u` != "0" ]] ; then
+    echo "This script needs to be run with root privileges - eg. : sudo $0"
+    exit 1
+fi
+
+#Stop HAL from auto-mounting anything, which it has a tendency to do.
+#Note that hal-lock stuffs up file handles, so I need to do the <&1 trick
+#to stop 'read' from falling over.
+#On 25/6 - looks like udisks --inhibit-all-polling -- ... is the alternative.
+if [[ `id -u` == "0" && -z ${SKIP_HAL_LOCK:-} ]] ; then
+  if [[ -z ${HAL_LOCKED:-} ]] ; then
+    echo -n "Inhibiting udisks polling: "
+
+## This was what I used before I discovered the simpler 'exec <&1' trick...
+#     exec env HAL_LOCKED=1 hal-lock --interface org.freedesktop.Hal.Device.Storage --exclusive --run \
+# 	"/bin/bash -c \"exec /bin/bash '$0' $* <&1\""
+
+    exec env HAL_LOCKED=1 udisks --inhibit-all-polling -- $0 "$@"
+  else
+    exec <&1  #Voila!
+    echo "OK"
+  fi
+fi
+
+#1 Settings
+# Number of MiB of free space to leave on disk when making casper-rw file, and
+# minimum size of file.
+MIN_RW_CAPACITY=80
+REMASTER_DIR=none
+LIVE_MEDIUM=""
+#KEY_MOUNT_DIR=/media
+#SYSLINUX_BINARY=/usr/bin/syslinux
+#MBR_IMAGE=/usr/lib/syslinux/mbr.bin
+
+#Defaults you may want to override
+REMASTER_ISO=${REMASTER_ISO:-}
+BL_AUTORUN=${BL_AUTORUN:-}
+BLUM_SPARE_SPACE=${BLUM_SPARE_SPACE:-0}
+BLUM_ALLOW_QUICK_MODE=${BLUM_ALLOW_QUICK_MODE:-0}
+BLUM_ASSUME_YES=${BLUM_ASSUME_YES:-0}
+SYSLINUX_BINARY=${SYSLINUX_BINARY:-syslinux}
+MBR_IMAGE=${MBR_IMAGE:-/usr/lib/syslinux/mbr.bin}
+if [ -z "${KEY_MOUNT_DIR:-}" ] ; then
+  if [ -d /dev/shm ] ; then
+    KEY_MOUNT_DIR=/dev/shm/keymount
+  else
+    KEY_MOUNT_DIR=/tmp/keymount
+  fi
+fi
+mkdir -p "$KEY_MOUNT_DIR"
+
+#See if I can spot a suitable image
+REMASTER_DIR=`echo bio-linux*.iso`
+
+#Keep track of mounted stuff for cleanup later
+MOUNTED_G=""
+MOUNTED_L=""
+
+function umount_then_exit() {
+    local exit_status=${1:-$?}
+    #Clean up all the mounted stuff
+    trap ERR
+    popd >& /dev/null || true
+    wait
+    if [[ -n "$MOUNTED_L" ]] ; then
+	echo "Cleaning up - unmounting key partitions:  $MOUNTED_L"
+        sync ; sync
+	eval "umount $MOUNTED_L"
+    fi
+    if [[ -n "$MOUNTED_G" ]] ; then
+	echo "Cleaning up - unmounting ISO files: $MOUNTED_G"
+        sync ; sync
+	eval "umount $MOUNTED_G"
+    fi
+    sync ; sync #just for luck?!
+    exit $exit_status
+}
+
+function qm() {
+    [ ${quick_mode:-0} -ne 0 ]
+}
+
+function nr() {
+    [ ${NOREPARTITION:-0} -ne 0 ]
+}
+
+function get_parted_alignment() {
+    #If parted supports -a, return the right alignment
+    #else return nothing
+    sudo parted -a . /dev/null 2>&1 >/dev/null | grep ^parted | grep -q 'invalid argument' && \
+	echo -n '-a opt'
+}
+
+trap umount_then_exit 1 2 3 15 ERR
+
+#Detect if boot is from a live medium
+[ -n "$DEBUG" ] && echo "Seeing if this is a Live system."
+if grep -q '/dev/loop0 /rofs squashfs' /proc/mounts ; then
+    boot_media_line=`grep -m1 -B1 '/dev/loop0 /rofs squashfs' /proc/mounts | head -n 1`
+    boot_media_fstype=`echo "$boot_media_line" | cut -d ' ' -f 3`
+    if [[ -n "$boot_media_fstype" ]] ; then
+	[ -n "$DEBUG" ] && echo " Yes - Finding boot medium for live system."
+    	LIVE_MEDIUM=`echo "$boot_media_line" | cut -d ' ' -f 1`
+	[ -n "$DEBUG" ] && echo " Boot medium was $LIVE_MEDIUM."
+    else
+	[ -n "$DEBUG" ] && echo "Apparently not a live system."
+    fi
+fi
+
+echo "Looking for a candidate image to copy..."
+if [ -n "$REMASTER_ISO" ] ; then
+    echo "  \$REMASTER_ISO was manually set to $REMASTER_ISO"
+    REMASTER_DIR="$REMASTER_ISO"
+elif [ "$REMASTER_DIR" = "${REMASTER_DIR#* }" -a "$REMASTER_DIR" = "${REMASTER_DIR#*\*}" ] ; then
+    echo "  Found an ISO file in the current directory"
+    REMASTER_DIR=`pwd`"/$REMASTER_DIR"
+else
+    REMASTER_DIR=none
+    if [ -d /media/cdrom/isolinux ] ; then
+	echo "  Found a Live DVD mounted under /media/cdrom"
+	REMASTER_DIR=/media/cdrom
+    elif [ -d /media/dvd/isolinux ] ; then
+	echo "  Found a Live DVD mounted under /media/dvd"
+	REMASTER_DIR=/media/dvd
+    elif [ -n "$LIVE_MEDIUM"  ] ; then
+	#By this heuristic, it looks like a Live boot, do more heuristics:
+        REMASTER_DIR="$LIVE_MEDIUM"
+  	if [[ "$boot_media_fstype" = "iso9660" ]] ; then
+	    echo "  Detected boot from Live DVD or CD on $REMASTER_DIR"
+	elif [[ "$boot_media_fstype" = "vfat" ]] ; then
+	    echo "  Detected boot from Live USB memory stick on $REMASTER_DIR"
+	else
+	    echo "  Detected boot from Live $boot_media_fstype medium on $REMASTER_DIR"
+	fi
+    elif [ -d /media/bl-live-iso/isolinux -o -d /media/bl-live-iso/syslinux ] ; then
+        echo "  Found an existing Live USB memory stick mounted at /media/bl-live-iso"
+	REMASTER_DIR=/media/bl-live-iso
+    else
+	[ -n "$DEBUG" ] && echo "No candidate image found by guessing."
+    fi
+fi
+
+#Proceed without prompt if REMASTER_ISO was set.
+if [ -z "$REMASTER_ISO" ] ; then
+    echo "Please give the location of an image to be read.  If you are trying to copy directly"
+    echo "from a DVD and it was not detected above, try \"/dev/cdrom\"."
+    echo
+    read -p "ISO, device or directory to use [$REMASTER_DIR]: " rmd
+
+    if [ "$rmd" != "" ] ; then
+        REMASTER_DIR=$rmd
+    fi
+fi
+if [ "$REMASTER_DIR" = "none" ] ; then
+    umount_then_exit 0
+fi
+
+# Potential places there might be a USB stick
+#KEY_DEVICES='/dev/sdb /dev/sdc /dev/sdd'
+
+# or, better, ask HAL:
+#KEY_DEVICES=`hal-find-by-property --key storage.bus --string usb | xargs -i hal-get-property --key block.device --udi '{}'`
+#KEY_DEVICES=`hal-find-by-property --key storage.bus --string usb` || true
+
+# or, in 14.04, do this:
+KEY_DEVICES=`ls /dev/disk/by-id | grep ^usb- | grep -v 'usb-.*-.*-part.*'` || true
+KEY_DEVICES_OK=""
+
+
+echo
+echo "Found the following candidate memory stick devices:"
+for device in `echo $KEY_DEVICES` ; do
+    echo "/dev/"`readlink /dev/disk/by-id/$device | sed 's,.*/,,'` \
+	 "= "`echo $device | cut -d- -f 2`
+done ; echo
+
+for device in `echo $KEY_DEVICES` ; do
+
+    #device_capacity=`hal-get-property --key storage.removable.media_size --udi $device`
+    #device_capacity=$(( $device_capacity / 1000000000 ))
+
+    #or
+    # (I prefer this one as it also sanity-checks /proc/partitions)
+
+    [ -n "$DEBUG" ] && echo "Getting full_dn for $device."
+
+    #full_dn=`hal-get-property --key block.device --udi $device`
+    dn=`readlink /dev/disk/by-id/$device | sed 's,.*/,,'`
+    full_dn="/dev/$dn"
+
+    #HAL has started reporting devices twice for some reason.
+    [ -n "$DEBUG" ] && echo "Checking if  $dn is a dupe."
+    if echo "$KEY_DEVICES_OK" | grep -q "$full_dn" ; then
+	echo "Device $dn is already in the list."
+	continue
+    fi
+
+    [ -n "$DEBUG" ] && echo "Scanning capacity for $dn."
+
+    device_capacity=`grep " $dn\$" /proc/partitions | awk '{print $3}'`
+    if [ "$device_capacity" = "" ] ; then
+	echo "No capacity found (in /proc/partitions) for device $dn ($device)"
+	continue
+    fi
+    [ -n "$DEBUG" ] && echo "Got capacity $device_capacity for $dn."
+    eval "device_capacity_$dn"=$device_capacity
+
+    # convert device capacity to MiB (1024 * 1024 = 1048576
+    # but to allow some filesystem overhead I use 960000 as an estimate)
+    device_capacity=$(( $device_capacity / 960000 ))
+
+    [ -n "$DEBUG" ] && echo "Converted to capacity $device_capacity for $dn."
+
+    #Capacity and safety check - anything over 70GB is assumed to be a hard drive
+    if [ $device_capacity -lt 2 ] ; then
+	echo "Device $dn looks too small to use."
+	continue
+    fi
+    if [ $device_capacity -gt 79 ] ; then
+	echo "Device $dn is big - maybe a hard drive?"
+	continue
+    fi
+
+    #Can we check for Stew's IPod and Palm Pilot, so as not to accidentally nuke them??
+    #Both iPod and iRiver show up thus
+    [ -n "$DEBUG" ] && echo "IPod check on $dn."
+
+    #if [ x`hal-get-property --key portable_audio_player.type --udi $device 2>/dev/null` != 'x' ] ; then
+    if udevadm info --query=property --name=$full_dn | grep -q ^ID_MEDIA_PLAYER= ; then
+	echo "Device $dn looks like a music player!"
+	continue
+    fi
+
+    #Now check for the case where we are booting from a USB stick and exclude that one
+    [ -n "$DEBUG" ] && echo "Live medium check on $dn."
+
+    if [[ -n "$LIVE_MEDIUM" ]] ; then
+    	[ -n "$DEBUG" ] && echo " \$LIVE_MEDIUM was set to $LIVE_MEDIUM, preceeding with check."
+	#resolve if symlink
+        foo=`readlink -e $LIVE_MEDIUM || true`
+
+    	[ -n "$DEBUG" ] && echo " readlink said: $foo"
+	if [[ -n "$foo" && ${foo%[1-9]} = $full_dn ]] ; then
+	    echo "Device $dn is the device that the system is running off."
+            continue
+	fi
+    fi
+
+    #Now check for the case where we are copying from a USB key
+    [ -n "$DEBUG" ] && echo "Source check on $dn."
+
+    if [ -b "$REMASTER_DIR" ] ; then
+        foo=`readlink -e $REMASTER_DIR`
+	if [[ -n "$foo" && ${foo%[1-9]} = $full_dn ]] ; then
+	    echo "Device $dn is the same as the source device."
+            continue
+	fi
+    else
+	#Copying from a mounted key, giving the mount point, maybe?
+	#Resolve dir to device using df trick
+	foo=`df $REMASTER_DIR 2>/dev/null | tail -n1 | cut -d ' ' -f 1`
+	if [[ -n "$foo" && ${foo%[1-9]} = $full_dn ]] ; then
+	    echo "Device $dn contains the source directory."
+            continue
+        fi
+    fi
+
+    #Now check if the device is mounted
+    #Sorry about the horrid if-construct below...
+    device_mounts=`mount | cut -d ' ' -f 1 | egrep $full_dn'[0-9]*$' | tac` 
+    if [ -n "$device_mounts" ] ; then
+	if [[ `id -u` = "0" ]] ; then
+	    if umount $device_mounts >&/dev/null ; then
+		device_mounts=''
+	    fi
+	fi
+	if [ -n "$device_mounts" ] ; then
+	    echo "Device $dn busy - needs to be unmounted first if it is to be re-partitioned."
+	    continue
+	fi
+    fi
+
+    KEY_DEVICES_OK="$KEY_DEVICES_OK $full_dn"
+done
+KEY_DEVICES_OK="${KEY_DEVICES_OK/# /}"
+
+if [[ `id -u` != "0" ]] ; then
+    echo "These devices are ready to load: "${KEY_DEVICES_OK:-NONE}
+    echo " !! You need to be root (eg. run this script under sudo) to actually load the images !!"
+    umount_then_exit 1
+fi
+
+#Now some sanity checks
+test -d $KEY_MOUNT_DIR || { echo "Directory $KEY_MOUNT_DIR does not exist - aborting." ; umount_then_exit 1 ; }
+test -e $MBR_IMAGE || { echo "Image file $MBR_IMAGE does not exist - aborting." ; umount_then_exit 1 ; }
+
+#Now get image (either from remaster dir or DVD or iso on loopback)
+if [ -f $REMASTER_DIR ] ; then
+    [ -n "$DEBUG" ] && echo "Trying to mount loopback source image."
+    #Assume an ISO file, use loop to mount
+    mkdir -p $KEY_MOUNT_DIR/iso1
+    mount -t iso9660 -o ro,loop $REMASTER_DIR $KEY_MOUNT_DIR/iso1
+    MOUNTED_G="$KEY_MOUNT_DIR/iso1 $MOUNTED_G"
+    REMASTER_DIR=$KEY_MOUNT_DIR/iso1
+elif [ -b $REMASTER_DIR ] ; then
+    [ -n "$DEBUG" ] && echo "Trying to mount source device."
+    #A device to be mounted - virtually the same as above, but if the device is already mounted
+    #we need to get the status right, so try both ro and rw
+    mkdir -p $KEY_MOUNT_DIR/live1
+    ! mount -t auto -o ro $REMASTER_DIR $KEY_MOUNT_DIR/live1 2>/dev/null && \
+	mount -t auto -o rw $REMASTER_DIR $KEY_MOUNT_DIR/live1 2>/dev/null
+    MOUNTED_G="$KEY_MOUNT_DIR/live1 $MOUNTED_G"
+    REMASTER_DIR=$KEY_MOUNT_DIR/live1
+fi
+
+#Also make a mount point for the squashfs
+mkdir -p $KEY_MOUNT_DIR/loop2
+
+if ! [ -d $REMASTER_DIR/isolinux -o -d $REMASTER_DIR/syslinux ] ; then
+    echo "Expected to find directory $REMASTER_DIR/isolinux or syslinux - not found - aborting."
+    umount_then_exit 1
+fi
+
+#Calculate estimated size of required first partition.
+#Add 5% for overheads.
+#Tweak image_file_count to reflect addition of bl-autorun, but not casper-rw or ldlinux.sys
+image_size=$(( `du -DB MiB --exclude="casper-rw" -s $REMASTER_DIR | awk '{print int($1 * 105 / 100)}'`))
+image_file_count=`find $REMASTER_DIR -not -type l | grep -v 'ldlinux.sys' | wc -l`
+[ -e "$REMASTER_DIR/casper-rw" ] && image_file_count=$(( image_file_count - 1 ))
+[ -e "$REMASTER_DIR/bl-autorun" ] || image_file_count=$(( image_file_count + 1 ))
+
+if [ -z "$KEY_DEVICES_OK" ] ; then
+    echo "Image size is approx $image_size megabytes.  No suitable devices found!"
+
+    umount_then_exit 1
+fi
+
+#If there is just one device and quick mode is enabled then see if it is
+#possible.
+quick_mode=0
+if [ ! "$BLUM_ALLOW_QUICK_MODE" -eq 0 ] ; then
+    if [ "${KEY_DEVICES_OK/ /}" = "$KEY_DEVICES_OK" ] ; then
+	if ! grep -q " $KEY_DEVICES_OK"'2$' /proc/partitions ; then
+	   echo "** Enabling quick refresh for device $KEY_DEVICES_OK"
+	   quick_mode=1
+	fi
+    fi
+fi
+
+#You must be root because we need to access the devices directly
+KEY_DEVICES_COUNT=`echo "$KEY_DEVICES_OK" | wc -w`
+echo "Will now install $image_size MiB image onto $KEY_DEVICES_COUNT devices: $KEY_DEVICES_OK"
+if [ "$BLUM_ASSUME_YES" -eq 0 ] ; then
+    read -p 'Proceed? (y/n)' -e -n 1 ; [ "$REPLY" = 'y' -o "$REPLY" = 'Y' ]
+fi
+
+#Now for each device:
+nn=1
+echo -n "Making partitions: "
+for device in `echo $KEY_DEVICES_OK` ; do
+    #Make two partitions on disk - NOREPARTITION allow existing partitions to be kept.
+    if ! nr || qm ; then
+	parted -s $device -- unit MiB mklabel msdos
+	parted -s $device `get_parted_alignment` -- unit MiB mkpart primary 1 $image_size
+	parted -s $device `get_parted_alignment` -- unit MiB mkpart primary $image_size -1
+    fi
+
+    #If I can use GPT, set bit 60 (ro) on first partition
+    #(TODO)
+    qm || parted -s $device set 1 boot on
+
+    #Make sure there is a mount point for sticks and casper-rw
+    mkdir -p "$KEY_MOUNT_DIR/"`basename $device`"1" "$KEY_MOUNT_DIR/"`basename $device`"2"
+
+    echo -n "$nn "
+    nn=$(( nn + 1))
+done ; echo ": DONE"
+
+#Allow HAL to finish creating device node
+sync ; sleep 2
+for device in `echo $KEY_DEVICES_OK` ; do
+    stat "$device" "$device"1 > /dev/null
+done
+
+#Again for each device:
+nn=1
+echo -n "Spawning copy processes in parallel: "
+for device in `echo $KEY_DEVICES_OK` ; do
+
+    mount_point="$KEY_MOUNT_DIR/"`basename $device`"1"
+
+    #Estimate size of casper-rw to make, but if this number is too large it should just fill the
+    #disk, and the minimum size for casper-rw is (arbitrarily) 80MiB.
+    eval device_capacity="\$(( \$device_capacity_"`basename $device`" / 1024 ))"
+    if [ "$BLUM_SPARE_SPACE" -eq 0 ] ; then
+	rw_size=$device_capacity
+    else
+	rw_size=$(( $device_capacity - $image_size - $BLUM_SPARE_SPACE ))    
+    	[ $rw_size -lt $MIN_RW_CAPACITY ] && rw_size=$MIN_RW_CAPACITY
+    fi
+
+    if [ -n "$DEBUG" ] ; then
+        echo
+        qm || echo "DEBUG: Will make casper-rw with maximum size $rw_size megabytes." ;\
+              echo "Calculation was : $device_capacity - $image_size - $BLUM_SPARE_SPACE (min $MIN_RW_CAPACITY)"
+        qm && echo "DEBUG: Will use existing casper-rw."
+    fi
+
+    # Note - there is no real point in zeroing the file but there is also no way around it.
+    # The Linux VFS is careful to avoid allowing a file to contain data that was previously on
+    # the disk, so I have to write something.
+    # Using the seek= option in dd causes the vfat driver to do the zeroing, which saves some
+    # useless copying of chunks of null bytes into and out of userspace.  Note if I tried this on
+    # an ext2 disk I'd get a sparse file which would be no use to me.
+    # On 11/6/10 - reverted to using count= instead of seek= because older kernels actually
+    # crash if asked to seek too far into a file on a vfat mount.
+
+    #Things done to each stick in parallel:
+    #  Format vfat partition
+    #  Mount vfat partition
+    #  Use rsync to copy files
+    #  Make a little breathing space
+    #  Create the bl-autorun directory or format the second partition
+    #  Make casper-rw file (dd may return error if disk full but file should still exist)
+    #  Write ext2 file system into casper-rw file
+    #  Remove space filler file
+
+    # Note that if copying from a stick, casper-rw will NOT be copied but bl-autorun WILL be.
+
+    # Note 2 - I need a way to allow files to be copied from some location, eg:
+    #  { [ -d "$BL_AUTORUN" ] && cp -r "$BL_AUTORUN"/* "${mount_point}/bl-autorun" } && \
+
+    export nn
+    if qm ; then
+    ( \
+	trap exit ERR
+    	mount -t vfat -o uid="0" "$device"1 $mount_point &&\
+        test -e "$mount_point/casper-rw" &&\
+	rsync -r --exclude=ldlinux.sys --exclude=ubuntu --exclude="dists/unstable" --exclude="dists/stable" \
+	    --exclude="casper-rw" --exclude="bl-autorun" --delete --partial "$REMASTER_DIR"/ $mount_point &&\
+        mkfs.ext2 -F -b 4096 -L "casper-rw" "$mount_point/casper-rw" >/dev/null 2>&1 &&\
+	echo -n "-$nn " ;
+    ) & 
+    elif nr ; then
+    ( \
+	mkfs.vfat -n "bl-live-iso" "$device"1 >/dev/null 2>&1 &&\
+	mount -t vfat -o uid="0" "$device"1 $mount_point &&\
+	rsync -r --exclude=ldlinux.sys --exclude=ubuntu --exclude="dists/unstable" --exclude="dists/stable" --exclude="casper-rw" \
+	    --partial "$REMASTER_DIR"/ $mount_point &&\
+        dd if=/dev/zero bs=1k count=64 of="$mount_point/buffer.tmp" >/dev/null 2>&1 &&\
+    	mkdir -p "${mount_point}/bl-autorun" &&\
+	{ if [ -d "$BL_AUTORUN" ] ; then cp -r "$BL_AUTORUN"/* "${mount_point}/bl-autorun" ; fi ; } &&\
+	{ dd if=/dev/zero bs=1k count="$rw_size"000 of="$mount_point/casper-rw" >/dev/null 2>&1 ; \
+          test -e "$mount_point/casper-rw" ; \
+        } &&\
+	mkfs.ext2 -F -b 4096 -L "casper-rw" "$mount_point/casper-rw" >/dev/null 2>&1 &&\
+        rm "$mount_point/buffer.tmp" &&\
+	echo -n "-$nn " ; 
+    ) &
+    else
+    ( \
+	mkfs.vfat -n "bl-live-iso" "$device"1 >/dev/null 2>&1 &&\
+	mount -t vfat -o uid="0" "$device"1 $mount_point &&\
+	rsync -r --exclude=ldlinux.sys --exclude=ubuntu --exclude="dists/unstable" --exclude="dists/stable" --exclude="casper-rw" \
+	    --partial "$REMASTER_DIR"/ $mount_point &&\
+    	mkdir -p "${mount_point}/bl-autorun" &&\
+	{ if [ -d "$BL_AUTORUN" ] ; then cp -r "$BL_AUTORUN"/* "${mount_point}/bl-autorun" ; fi ; } &&\
+	mkfs.ext4 -L casper-rw "$device"2 >/dev/null 2>&1 &&\
+	echo -n "-$nn " ; 
+    ) &
+    fi
+    MOUNTED_L="$mount_point $MOUNTED_L"
+    echo -n "+$nn "
+    nn=$(( nn + 1 ))
+done
+
+#Wait for all rsync processes.
+#Note - this is broken because wait always returns 0
+if ! wait ; then
+    echo "Some writing process returned an error"
+    umount_then_exit 1
+fi
+echo " : DONE"
+
+#Yet again, for each device:
+nn=1
+echo -n "Checking and installing syslinux: "
+#Sync does not seem to mean sync for our cheapo hubs.
+sleep 2 ; sync ; sleep 2
+for device in `echo $KEY_DEVICES_OK` ; do
+
+    mount_point="$KEY_MOUNT_DIR/"`basename $device`"1"
+    #do a find | wc -l to check all files copied
+    if [ 0`find $mount_point | grep -v 'ldlinux.sys\|casper-rw' | wc -l` -ne "$image_file_count" ] ; then
+	echo "WARNING: File count mismatch on $device (expected $image_file_count)"
+    fi
+
+    if [ ! -d $mount_point/.disk ] ; then
+       	echo "WARNING: You seem to be missing the vital hidden .disk directory"
+    fi
+
+    #move isolinux to syslinux, unless copying from a key image already
+    #Look for any .cfg files in the isolinux directory
+    if [ -d "$mount_point/isolinux" ] && ls $mount_point/isolinux | grep -qx '.*\.cfg' ; then
+	mv "$mount_point/isolinux" "$mount_point/syslinux"
+
+	#rename isolinux.cfg only if there is no syslinux.cfg
+	#Note if I copied the file I'd need to increment image_file_count.
+	[ ! -e "$mount_point/syslinux/syslinux.cfg" ]  && \
+	    mv "$mount_point/syslinux/isolinux.cfg" "$mount_point/syslinux/syslinux.cfg"
+
+	#Remove wubi.exe because it doesn't work properly for BL right now
+	# Nope - this belongs in recon
+	#rm -f "$mount_point/wubi.exe" "$mount_point/autorun.inf"
+    fi
+
+    #munge text.cfg (always, as this should be idempotent)
+    #On 12.04 this file mysteriously lost the letter 'e'
+    TEXT_CFG="$mount_point/syslinux/text.cfg"
+    test -e "$TEXT_CFG" || TEXT_CFG="$mount_point/syslinux/txt.cfg"
+
+    sed -i 's/disc/stick/' "$TEXT_CFG"
+    sed -i 's/append *file=/append noprompt cdrom-detect\/try-usb=true persistent file=/' "$TEXT_CFG"
+    sed -i 's/boot=casper *integrity-check/boot=casper noprompt integrity-check/' "$TEXT_CFG"
+
+    #Do the same for GRUB
+    GRUB_CFG="$mount_point/boot/grub/grub.cfg"
+
+    sed -i 's/disc/stick/' "$GRUB_CFG"
+    sed -i 's/ubuntu.seed *boot=casper/ubuntu.seed noprompt cdrom-detect\/try-usb=true persistent boot=casper/' "$GRUB_CFG"
+    sed -i 's/boot=casper *integrity-check/boot=casper noprompt integrity-check/' "$GRUB_CFG"
+
+    #Regenerate all md5sums
+    sed -i '/\.\/isolinux\//d ; /\.\/boot\/grub\/grub\.cfg/d' $mount_point/md5sum.txt
+    ( cd $mount_point ; find ./syslinux -type f -print0 | xargs -0 md5sum ) >> $mount_point/md5sum.txt
+    ( cd $mount_point ; echo ./boot/grub/grub.cfg | xargs md5sum ) >> $mount_point/md5sum.txt
+
+    #run syslinux on ze device, unless we are in quick mode
+    #Desperation...
+    sleep 2 ; sync ; sleep 2
+    umount "$device"1
+    if ! qm ; then
+        tee "$device" < $MBR_IMAGE > /dev/null
+        $SYSLINUX_BINARY "$device"1
+    fi
+
+    echo -n "$nn "
+    nn=$(( nn + 1 ))
+done ; echo " : DONE"
+MOUNTED_L=""
+
+#Now mount the ext2 loopback (or ext4 partition) to add initial data
+#This only works if I can mount the squashfs file system,
+#so make sure that works first.
+if mount -t squashfs -o loop "$REMASTER_DIR"/casper/filesystem.squashfs $KEY_MOUNT_DIR/loop2 ; then
+
+    MOUNTED_G="$KEY_MOUNT_DIR/loop2 $MOUNTED_G"
+    if qm || nr ; then
+	FOO=loopback
+    else
+	FOO=partition
+    fi
+
+    #One final time, for each device:
+    nn=1
+    echo -n "Building initial file structure in casper-rw $FOO: "
+    for device in `echo $KEY_DEVICES_OK` ; do
+
+	#Mount each stick and then the ext2 loopback in turn.
+	mount_base="$KEY_MOUNT_DIR/"`basename $device`
+	mount -t vfat -o uid="0" "${device}1" "${mount_base}1"
+	MOUNTED_L="${mount_base}1"
+	if [ "$FOO" = loopback ] ; then
+	  mount -t ext2 -o loop "${mount_base}1/casper-rw" "${mount_base}2"
+	else
+	  mount -t auto "${device}2" "${mount_base}2"
+	fi
+	MOUNTED_L="${mount_base}2 ${mount_base}1"
+
+	# on USB stick - create the home tree
+	mkdir -p ${mount_base}2/home/live/ ; pushd ${mount_base}2/home/live/ >/dev/null
+	mkdir -p Desktop Documents Downloads Music Pictures Public Templates Videos
+	# make new home tree public rwx
+	chmod -R 777 .
+	# Gnome complains when the home directory is public RW.  
+	chmod 755 .
+
+	# etc/skel files are required to be copied in premade /home/live
+	# this could be extracted from the loopback image.
+	rsync -at $KEY_MOUNT_DIR/loop2/etc/skel/ . || true
+	# Set umask for live user - but this will only work in zsh
+	echo $'#open umask for live user\n[ `id -u` = 999 ] && umask 000' | tee -a .zshrc .profile > /dev/null
+
+	#Load user defined stuffs
+	if [ -d "${FILES_FOR_HOME:-/dev/null}" ] ; then
+	    rsync -at "$FILES_FOR_HOME"/ .
+	fi
+
+	chmod 777 Desktop #(again!)
+	# make new home tree owned by live user (UID=999)
+	chown -R 999:100 .
+
+	popd >/dev/null
+
+	# Create the handy casper-rw root link to the live user desktop
+	ln -sf home/live/Desktop ${mount_base}2/Bio-Linux-Desktop
+
+        ##DEBUG
+	if [ -n "$DEBUG" ] ; then
+	    echo "BEFORE remount of $device ro"
+	    [ -e "${mount_base}1/casper-rw" ] && file -Ls "${mount_base}1/casper-rw" || true
+	    mount
+	    echo
+	fi
+
+	#Umount should result in a nice clean sync but something is wrong.
+	#Maybe this will do the job?
+	#HACK...
+	mount -o remount,ro "${mount_base}2"
+	sync
+
+        ##DEBUG
+	if [ -n "$DEBUG" ] ; then
+	    echo "BEFORE full umount of $device"
+	    [ -e "${mount_base}1/casper-rw" ] && file -Ls "${mount_base}1/casper-rw" || true
+	    mount
+	    echo
+	fi
+
+	#Umount, you swine!!!
+	for x in `seq 0 99` ; do
+	    [ -z "$MOUNTED_L" ] && break
+	    #Try $x
+	    sync ; sync # Liberal sprinklings of syncs!
+	    foo2="${MOUNTED_L#* }"  # Yes I should have used real arrays here
+	    if [ "$foo2" = "$MOUNTED_L" ] ; then foo2="" ; fi
+	    eval "umount ${MOUNTED_L%% *}" >&/dev/null && MOUNTED_L="$foo2" || true
+	done
+	#If that fails, this will at least catch/print the error...
+	if ! [ -z "$MOUNTED_L" ] ; then
+	    eval "umount $MOUNTED_L" && MOUNTED_L=""
+	fi
+
+        ##DEBUG
+	if [ -n "$DEBUG" ] ; then
+	    echo "AFTER umount of $device"
+  	   [ -e "${mount_base}1/casper-rw" ] && file -Ls "${mount_base}1/casper-rw" || true
+	    mount
+	    echo
+	fi
+
+	echo -n "$nn "
+	nn=$(( nn + 1 ))
+    done ; echo " : DONE"
+else
+    echo "WARNING: Squashfs mount failed - will not build initial file system on writeable partition."
+    nn=1
+    echo -n "Flushing all dirty cache data to sticks: "
+    for device in `echo $KEY_DEVICES_OK` ; do
+	eject "$device" #Just to turn the light off + force a sync
+	echo -n "$nn "
+	nn=$(( nn + 1 ))
+    done ; echo " : DONE"
+fi
+
+if [ "$nn" = "2" ] ; then
+    echo ; echo "All finished - your bootable USB stick is ready to use."
+else
+    echo ; echo "All finished - your bootable USB sticks are ready to use."
+fi
+umount_then_exit
+

@@ -1,0 +1,44 @@
+#!/bin/sh
+set -u
+set -e
+
+# Check that misc.py is patched to set the keymap.
+# Only needed on live so I don't care that it gets clobbered
+# by updates on installed system.
+echo
+echo "Verifying patch on misc.py..."
+
+if [ -z "${ROOT:-}" ] ; then
+    echo '!'" \$ROOT is not set.  Can't continue"
+    exit 1
+fi
+
+patchfile=~/build-bio-linux/fux_misc_py.patch
+filetopatch="$ROOT"/root/usr/lib/ubiquity/ubiquity/misc.py
+filetosed="$ROOT"/root/usr/lib/ubiquity/plugins/ubi-partman.py
+
+if [ ! -e "$patchfile" ] ; then
+    echo '!'" Patch file $patchfile not found.  Can't continue."
+    exit 1
+fi
+
+if [ ! -f "$filetopatch" ] ; then
+    echo '!'" Target file not found.  Can't continue."
+    exit 1
+fi
+
+if grep -q "Hack .*added for Bio-Linux" "$filetopatch"; then
+    echo ". File is already patched - good."
+else
+    # See if we can patch it without error
+    echo "~ Attempting patch"
+    sudo patch -Nt -r- "$filetopatch" < "$patchfile"
+fi
+
+# Now the partial workaround for bug 
+# https://bugs.launchpad.net/ubuntu/+source/ubiquity/+bug/1265192 as
+# seen in comment #38
+if grep -q '/single_os_replace' "$filetosed" ; then
+    echo "~ Switching message in "`basename "$filetosed"`
+    sudo sed -i 's,/single_os_replace,/no_systems_format,' "$filetosed"
+fi

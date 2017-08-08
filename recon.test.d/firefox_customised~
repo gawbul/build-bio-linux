@@ -5,7 +5,7 @@ set -e
 echo
 echo "Verifying that Firefox customisation seemed to stick"
 
-if [ ! -x ~/bl8bits/bin/openchroot ] ; then
+if [ ! -x ~/bin/openchroot ] ; then
     echo '!'" No executable ~/bin/openchroot.  Can't continue"
     exit 1
 fi
@@ -14,12 +14,12 @@ fi
 #COUNT="`find "$ROOT/root/usr/lib/firefox/defaults/profile/" -type f | wc -l`"
 
 COUNT=`echo "echo -n XXCOUNT= ; find /usr/lib/firefox/browser/defaults/profile/ -type f -not -name '*bak' | wc -l " \
-        | ~/bl8bits/bin/openchroot 2>&1 | grep ^XXCOUNT`
+        | ~/bin/openchroot 2>&1 | grep ^XXCOUNT`
 
 [ "$COUNT" = 'XXCOUNT=3' ]
 
 # I don't think we actually need this any more but it's only 1 symlink...
 COUNT=`echo "echo -n XXCOUNT= ; find /usr/lib/firefox/defaults/profile/ -type f -not -name '*bak' | wc -l " \
-        | ~/bl8bits/bin/openchroot 2>&1 | grep ^XXCOUNT`
+        | ~/bin/openchroot 2>&1 | grep ^XXCOUNT`
 
 [ "$COUNT" = 'XXCOUNT=3' ]

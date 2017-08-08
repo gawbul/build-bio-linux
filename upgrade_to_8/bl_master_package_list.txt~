@@ -95,7 +95,6 @@ bowtie2-examples
 bwa
 cdbfasta
 chimeraslayer
-chkrootkit
 cifs-utils
 cmake
 cufflinks
@@ -156,7 +155,6 @@ mafft
 make
 maq
 mcl
-mdadm
 meld
 meme
 meme-examples
@@ -302,7 +300,6 @@ r-doc-pdf
 readseq
 r-mathlib
 r-recommended
-rkhunter
 runurl
 rsync
 samtools

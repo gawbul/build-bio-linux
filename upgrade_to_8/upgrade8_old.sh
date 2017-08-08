@@ -42,20 +42,20 @@ do_md5_check() {
   true
 }
 #!/bin/sh
-# This is a shell archive (produced by GNU sharutils 4.14).
+# This is a shell archive (produced by GNU sharutils 4.15.2).
 # To extract the files from this archive, save it to some FILE, remove
 # everything before the '#!/bin/sh' line above, then type 'sh FILE'.
 #
-lock_dir=_sh14987
-# Made on 2017-06-21 13:02 BST by <manager@Bio-Linux-8>.
-# Source directory was '/home/manager/bl8bits/upgrade_to_8'.
+lock_dir=_sh10570
+# Made on 2016-02-07 21:01 GMT by <tbooth@bender>.
+# Source directory was '/home/tbooth/build/build-bio-linux/upgrade_to_8'.
 #
-# Existing files will *not* be overwritten, unless '-c' is specified.
+# Existing files WILL be overwritten.
 #
 # This shar contains:
 # length mode       name
 # ------ ---------- ------------------------------------------
-#   4851 -rwxrwxr-x bl_master_package_list.txt
+#   4825 -rwxrwxr-x bl_master_package_list.txt
 #   2212 -rwxrwxr-x bl_install_master_list.sh
 #   1746 -rw-rw-r-- message1.txt
 #   3125 -rw-rw-r-- sources.list.clean
@@ -123,33 +123,6 @@ then if (echo -n test; echo 1,2,3) | grep n >/dev/null
 '
      else shar_n=-n shar_c= ; fi
 else shar_n= shar_c='\c' ; fi
-f=shar-touch.$$
-st1=200112312359.59
-st2=123123592001.59
-st2tr=123123592001.5 # old SysV 14-char limit
-st3=1231235901
-
-if   touch -am -t ${st1} ${f} >/dev/null 2>&1 && \
-     test ! -f ${st1} && test -f ${f}; then
-  shar_touch='touch -am -t $1$2$3$4$5$6.$7 "$8"'
-
-elif touch -am ${st2} ${f} >/dev/null 2>&1 && \
-     test ! -f ${st2} && test ! -f ${st2tr} && test -f ${f}; then
-  shar_touch='touch -am $3$4$5$6$1$2.$7 "$8"'
-
-elif touch -am ${st3} ${f} >/dev/null 2>&1 && \
-     test ! -f ${st3} && test -f ${f}; then
-  shar_touch='touch -am $3$4$5$6$2 "$8"'
-
-else
-  shar_touch=:
-  echo
-  ${echo} 'WARNING: not restoring timestamps.  Consider getting and
-installing GNU '\''touch'\'', distributed in GNU coreutils...'
-  echo
-fi
-rm -f ${st1} ${st2} ${st2tr} ${st3} ${f}
-#
 if test ! -d ${lock_dir} ; then :
 else ${echo} "lock directory ${lock_dir} exists"
      exit 1
@@ -160,15 +133,10 @@ else ${echo} "x - failed to create lock directory ${lock_dir}."
      exit 1
 fi
 # ============= bl_master_package_list.txt ==============
-if test -n "${keep_file}" && test -f 'bl_master_package_list.txt'
-then
-${echo} "x - SKIPPING bl_master_package_list.txt (file already exists)"
-
-else
 ${echo} "x - extracting bl_master_package_list.txt gzipped"
   sed 's/^X//' << 'SHAR_EOF' | uudecode &&
-begin 600 _sh14987/gzi
-M'XL("!M@2ED"`V)L7VUA<W1E<E]P86-K86=E7VQI<W0N='AT`&U8VW*L.!)\
+begin 600 _sh10570/gzi
+M'XL(".>LMU8"`V)L7VUA<W1E<E]P86-K86=E7VQI<W0N='AT`&U8VW*L.!)\
 MUZ?,!!LQ]L3LQ/Z-$(606S=+HAO\]9LE;J+/>7!3F8"H*M5-EOV:LY!**B.%
 M=-$:%;P/)I.04:J)/D1/TN'7A,X:/R_=_:F&3VJ2%&*AM"XWOI`SN65R)M?;
 MM<,J3TK9!-^5$&S[3"_58XXWQNBNMS*7EOL%#[$;C:7;B]8LY!I"R?AY@P6:
@@ -181,43 +149,41 @@ M<5JMB7?B_D(RTMWQ6]A\&S`M+E9A,QHFR>Q"NVCJ<_>+YQ,25B&+LQG-_0;)
 M(=-WPV2N/#3(6VZ`?"\=&?6IY+=<X)"ZN1@IAG2]$ZE=ILC>4KD1B_$YDBJA
 M5;2@C(WC[6.%RBU>RT0(ZN[Y;\M!OR[./S^WD&+V+:K*C.\9>3-QSCURZ7%S
 MV*+F5MN?7(,Y4K+'M4.(B[B6"?66J2K]0J!>J5_)_%V783<BXU%&8N[F8EBK
-M\"J&]DM'2]VE@_XXKLV-EQ1JZ+<BIR8.+)DMLC0!/5((Y8'2J\QX?$"QI4+-
-MXPC+'L`S3%*;\FI7N==BH![]9,1UE+,MW=?P$`/\9K3'515T&9D,MD$%Y_`J
-M*>0`.A@YJ?+V2_Z\R;#3(0S\!EE!N:#:^P^![?$*;SV#G7G-2^H0VP;-!-%Q
-M56R6ON3&++4XL'7ZSS^%EE8N:Y<IH0=VW'^T4D+3P/?'D!!"7F@X6FC+'5A[
-M)#H>S[5?CGB!>^0?X.=:7722<3(J.ZF->FSP:7[$5LNG%3DNC**AD.S^VT4[
-M:^/%J7*'-H!P9_OY2N)+VAJ(7V3M.AI$T]?>J+CG=IM?6?P1V%6PIM\G!J2N
-M#1+%F4/OI+%'YJ0025_R*3O^><?H#R[4]=0_D)]5PL:B_6?#RIVK<"G@M-47
-MT^.S%T0RH`Z@(YV,D\9N%?I@<JR59B(8CW:2B19%]K>W7PE=Z7Z[T`*?Y>=.
-MK'X13HYC$35FG?P6W-O<(`<G'-D!/RB;_',EA#,J!>CJB.-=',UMZVT5[0,3
-MMK%"3M`J7$ML?>_H=GOKVAN66Y&\*+*&4`";'M5C__?.A/+@D2^("\Z:!B6J
-MR$53'S_D/4L8YCSM,2Q"?AF,4J)V'ZB/$"46<O[`;[W#7JJEJ!89%EP89C:A
-M@O+@JQ-1PV'&?XJ]4VW]*2)4T?2W>A]#+CH1UZ5+/*R,R!TLE8@3'[-*(2A_
-M-#%@#B@LL7H>'^]U$$K7J-NA"KHNN*$4UT;\:.2V:F9E\-S>_Y)<H'K"0(M:
-MLUVP:#IE_M8N3F5[T@35(8C65C;A1)B\"^:H-XRB@`P[2/P<']RA@AV44!]:
-M#OVL\"ZEAG3<QB^X)5#S5N&NO".,<A>@05\+\=<P(98[P\%VIP)'O_2:SB],
-MQO:4RM.<#+)^ONPU]\=YHI4'<"C\!:7ZP%%)1]B3X7P<,8']5ZA8QR8P^_V4
-M=CY1.H>*G?C92I0"9F4[B5P83C#0WZ<<Z1(MZM[C@/!;B/E`7'*W]3?(IXOJ
-ME@JW?=Q$HZ:$+2D7H3?[*B+6>XN%BG6=C@Y`%T_X^OF6UKP/'R=D=.JBZ]QS
-MH59/*WNR/."?N!2TE!.2O$RT[G*+#6HTY^=A33++'2$,+Q7<[#.ZS@$]ECID
-M6%&+](&Y6LR7_6Q)LW:TZ^E4;'PI+0PE'""I8$/J$[VN34@JQDOFD>,`Q-//
-MA3).4'0Z,VD=KNU+^GI-E\?UU'_VL,R?)X6Z>LJUH%[HVYK+QO22USU$ZJDQ
-MYA-+N4&<:NR1SS-6LP^O5N8IXL2G35O*G^L691O5.;W*=`7D$X</?P!6+<,]
-M+2X3^^A@MF*XB4>D#9SU6^UCT?@Q[&(<1G$<!!*'RH1,A)2(.Q!.VP33'A,.
-M3[QQLZ_;E%>OQ)G"66&D]B*3K.,,5JK)B4#=1*Z_.'P4D<-87C(1AP;"JC2C
-M8D;]\>:!7N6#G]%30S$#B9RYR:,!CEBL(-EQF?O]/QH0AR"@BXS($7&>$C`Q
-MF(]J+4ML*J[6/&GK$`=`:M'R.PH#!\X6=ZYU1^%S&;*=MPA/*DJ!$X2G2:XQ
-M;HJ0T?<4;S3SM/T<9Y'C!+*(N8=?Y^.X_H>8N8*+V9N"J97_Q]&=IPVP/VC3
-M3[+8[_UR3"<'M`&%8Y.1Q<89!+EX(E;PU]7A5KRHMT$'\4*]$B_^]]+RH</>
-LTUG<!XU+[)9](!8+C_,"X<7G.#ZX+3_[^8&K]U^Z;C0?BOX/3@>TA_,2``#>
+M\"J&]DM'2]VE@_XXKLV-EQ1JZ+<BIR8.+)DMLC0)9<9C5<7F"36/(\QY`,^P
+M0VT:JUW/7HN!>C21$==1SK9T7\-##'"6T1Y75=!:9#+PO0K.X552"'RT+7)2
+MY>V7_'F38:=#&/@-LH)R08GW'P)[XA7>>@8[\YJ7U"&@#3H(0N(JTRQ]R8U9
+M:D5XH)OH/_\46EJYK%VFA,;7<=/12@E-`]\?0T+<>*'A7:$MMUWMD=UX/-<F
+M.>(%;HQ_@)]K2=%)QLFH[*0VZK'!I_D16P&?5B2V,(J&0K+[;Q?MK(T7I\H=
+M:C]BG.WG*XDO:6OT?9&UZV@00E][=^)&VVU^9?%'8"O!FGX?$Y"O-DA49(ZW
+MD\8>F9-"^'S)I^SXYQVC*;A0UU/_0'Y6"1N+GI\-*W>NPOG/N:HOIL=G+X@,
+M0/*C#9V,D\9N9?E@<JSE92(8CQZ2B19%]K>W7PFMZ'Z[T`*?Y>=.K'X13HYC
+M$35FG?P6W-`<V0$_J)+\<\6_,RH%:.F((UT<O6QK917M\Q$VL$+.QRI<2VQM
+M[FAN>Z?:^Y-;D:NHJ890[YJ6U&/G]T:$:N"1*8@(SI<&):K(15,?/^0]/QCF
+M/.W1*T)^&4Q.HC8;J(_@)!9R_L!OO</^J96GUA067!AF-J&"\N"K$U'+P1G_
+M*?;&M+6CB"!%C]_*>PRYZ$1<AB[QL#(B:[!4(DYYC":%H/S1LX`YE+#$ZGE:
+MO)<]*%WC;8<JZ+K@AE)<&_&CD=LBF97!<WN[2W*!Z@GS*ZK,=L&BZ93Y6[LX
+ME>U)$U2'\%E;V8038=`N&)O>,,H!<NL@\7-\<(<*=E!"96@YM*_"NY0:TG'7
+MON"6.LU;A9OPCC"Y78`&?2W$7\-`6.X,!]N="AS]TFLZOS`9VU,J3W,RR/?Y
+MLM?<'^<!5A[`H>07%.D#1R4=84^&\W'$!/9?H58=F\#L]U/:^43IG"%VXF<K
+M3@J8E>TD<F$XP4!_GW*D2[2H>(\#PF\AY@-QL=W6WR`?)JI;*MSV<1.-FA*V
+MI%R$WNRKB%CO+18JUG48.@!=/.'KYUM:\SY\G)#1J8NN8\Z%6CVM[,GR/'_B
+M4M!,3DCR,M&ZRRTVJ-&<GX<UR2QWA#"\5'"SS^@W!_18ZI!A12W/!^9J,5_V
+MLR7-VM&NIU.Q\:6T,)1P@*2"#:E/]+HV(:D8+YF'C0,0#SL7RC@PT>G,I'6X
+MMB_IZS5='M=3_]G#,G^>%.KJ*=>">J%O:RX;TTM>]Q"II\:83"SE!G&JL4<^
+MSUC-/KQ:F>>'$Y\V;2E_KEN4;53G]"K3%9!/G#7\`5BU#/>TN$SLHX/9BN$F
+M'I$V<-9OM8]%X\>PBW$8Q3'W)PZ5"9D(*1%W(!RN":;-ONY.7KT29^9FA<'9
+MBTRRSB]8H.8DXG,3N>SBB%%$#F-YR40<$8BFTLR&&67'FP=:E`]^1BL-Q0PD
+M<N:NCKXW8K&"',=E[O?_6T`<@H`N,B(UQ'D6P(A@/JJ1++&%N%KSI*TQ'``9
+M1<OO*$P8.$'<N=8+A4]?2'+>&3RI*`7."QX?N;2X*4)&NU.\O\S3]G.<.(YS
+MQB+F'D?/^3B4_R%F+MQB]J9@3.7_9'3GF0+L#[KSDRRV>;\<0\D!;4"]V&0D
+MKW$&L2V>"!'\=76:%2_J;=!!O%"FQ(O_B;1\Z+"W<A;W^>(2NV6?@,7"\[M`
+=5/%IC8]GR\]^8."B_9>N&\U'G_\#..AE:MD2``"W
 `
 end
 SHAR_EOF
 ${echo} gunzipping file bl_master_package_list.txt &&
 
 gzip -dc ${lock_dir}/gzi > 'bl_master_package_list.txt' && \
-  (set 20 17 06 21 13 01 31 'bl_master_package_list.txt'
-   eval "${shar_touch}") && \
   chmod 0775 'bl_master_package_list.txt'
 if test $? -ne 0
 then ${echo} "restore of bl_master_package_list.txt failed"
@@ -226,24 +192,18 @@ fi
   then (
        ${MD5SUM} -c >/dev/null 2>&1 || ${echo} 'bl_master_package_list.txt': 'MD5 check failed'
        ) << \SHAR_EOF
-26950bae3c2c2e73d8727ef9e7343838  bl_master_package_list.txt
+5f0781f289a6caea5bc79326be079e71  bl_master_package_list.txt
 SHAR_EOF
 
 else
-test `LC_ALL=C wc -c < 'bl_master_package_list.txt'` -ne 4851 && \
-  ${echo} "restoration warning:  size of 'bl_master_package_list.txt' is not 4851"
+test `LC_ALL=C wc -c < 'bl_master_package_list.txt'` -ne 4825 && \
+  ${echo} "restoration warning:  size of 'bl_master_package_list.txt' is not 4825"
   fi
-fi
 # ============= bl_install_master_list.sh ==============
-if test -n "${keep_file}" && test -f 'bl_install_master_list.sh'
-then
-${echo} "x - SKIPPING bl_install_master_list.sh (file already exists)"
-
-else
 ${echo} "x - extracting bl_install_master_list.sh gzipped"
   sed 's/^X//' << 'SHAR_EOF' | uudecode &&
-begin 600 _sh14987/gzi
-M'XL("`^<1ED"`V)L7VEN<W1A;&Q?;6%S=&5R7VQI<W0N<V@`E57?;]LV$'Z.
+begin 600 _sh10570/gzi
+M'XL(".>LMU8"`V)L7VEN<W1A;&Q?;6%S=&5R7VQI<W0N<V@`E57?;]LV$'Z.
 M_HJS+$1I,5IQ%@1#.K<HL'5/Z\-:;`]Q9]$F;7.62$6DZAA)_O?>4;^LI-DP
 M/P0(=??=Q^_N/HY'R5+I9,GM-K#2`:N"8`SOP:Y*53AP!K8R*^!@*E#:.IYE
 MP&%9Z=46S!H*OMKQC;0_P&VE5KOL`':GBD+I#8*XK;$2>%9*+@YMMA23(%/6
@@ -272,8 +232,6 @@ SHAR_EOF
 ${echo} gunzipping file bl_install_master_list.sh &&
 
 gzip -dc ${lock_dir}/gzi > 'bl_install_master_list.sh' && \
-  (set 20 17 06 18 16 28 15 'bl_install_master_list.sh'
-   eval "${shar_touch}") && \
   chmod 0775 'bl_install_master_list.sh'
 if test $? -ne 0
 then ${echo} "restore of bl_install_master_list.sh failed"
@@ -289,17 +247,11 @@ else
 test `LC_ALL=C wc -c < 'bl_install_master_list.sh'` -ne 2212 && \
   ${echo} "restoration warning:  size of 'bl_install_master_list.sh' is not 2212"
   fi
-fi
 # ============= message1.txt ==============
-if test -n "${keep_file}" && test -f 'message1.txt'
-then
-${echo} "x - SKIPPING message1.txt (file already exists)"
-
-else
 ${echo} "x - extracting message1.txt gzipped"
   sed 's/^X//' << 'SHAR_EOF' | uudecode &&
-begin 600 _sh14987/gzi
-M'XL("`^<1ED"`VUE<W-A9V4Q+G1X=`!=55V/VS80?->OV+>VQEG7I%>@"."'
+begin 600 _sh10570/gzi
+M'XL(".>LMU8"`VUE<W-A9V4Q+G1X=`!=55V/VS80?->OV+>VQEG7I%>@"."'
 MY-*B`8K`0"]M\DA3*XDU11+\.)_^?6<IV3[G7DZ6E[,SL[/T;K>C3RYE9:UQ
 M`WTP?ON7<>6%?J/=;M<T3Z-)E'0T(=/)6$MF*;ZI]"Y[FGV)-"D]&L<MT=ZR
 M2DR154=YY,2-\YD3:16Y+];.=.#>1Y9S%*+7S%W;-!MZ&GGYG!+@9LKJR)3X
@@ -326,8 +278,6 @@ SHAR_EOF
 ${echo} gunzipping file message1.txt &&
 
 gzip -dc ${lock_dir}/gzi > 'message1.txt' && \
-  (set 20 17 06 18 16 28 15 'message1.txt'
-   eval "${shar_touch}") && \
   chmod 0664 'message1.txt'
 if test $? -ne 0
 then ${echo} "restore of message1.txt failed"
@@ -343,17 +293,11 @@ else
 test `LC_ALL=C wc -c < 'message1.txt'` -ne 1746 && \
   ${echo} "restoration warning:  size of 'message1.txt' is not 1746"
   fi
-fi
 # ============= sources.list.clean ==============
-if test -n "${keep_file}" && test -f 'sources.list.clean'
-then
-${echo} "x - SKIPPING sources.list.clean (file already exists)"
-
-else
 ${echo} "x - extracting sources.list.clean gzipped"
   sed 's/^X//' << 'SHAR_EOF' | uudecode &&
-begin 600 _sh14987/gzi
-M'XL("`^<1ED"`W-O=7)C97,N;&ES="YC;&5A;@"U5DUO&C$0O?,K1N*05@I+
+begin 600 _sh10570/gzi
+M'XL(".>LMU8"`W-O=7)C97,N;&ES="YC;&5A;@"U5DUO&C$0O?,K1N*05@I+
 M/E`/N?4CATB41`FHJJHJ\MJSK-O%7OD#NO^^,[ML(*$D!-(#$AC[S;R9-\_N
 M*DQ!*F=G%S\F:30APND@.1G`<'P']V,7?:A@+')W#SWX6)2Y`#%3'P;P[NSD
 M='!R?G;^_F<?0K-O)K0!ASXX+0.J3J<+=XB0AU!>]/LY%F42ZQB)M+,^?6;1
@@ -379,8 +323,6 @@ SHAR_EOF
 ${echo} gunzipping file sources.list.clean &&
 
 gzip -dc ${lock_dir}/gzi > 'sources.list.clean' && \
-  (set 20 17 06 18 16 28 15 'sources.list.clean'
-   eval "${shar_touch}") && \
   chmod 0664 'sources.list.clean'
 if test $? -ne 0
 then ${echo} "restore of sources.list.clean failed"
@@ -396,17 +338,11 @@ else
 test `LC_ALL=C wc -c < 'sources.list.clean'` -ne 3125 && \
   ${echo} "restoration warning:  size of 'sources.list.clean' is not 3125"
   fi
-fi
 # ============= pseudo_orphans.txt ==============
-if test -n "${keep_file}" && test -f 'pseudo_orphans.txt'
-then
-${echo} "x - SKIPPING pseudo_orphans.txt (file already exists)"
-
-else
 ${echo} "x - extracting pseudo_orphans.txt gzipped"
   sed 's/^X//' << 'SHAR_EOF' | uudecode &&
-begin 600 _sh14987/gzi
-M'XL("`^<1ED"`W!S975D;U]O<G!H86YS+G1X=`!54KMRW#`,[/45&%_C)*;'
+begin 600 _sh10570/gzi
+M'XL(".>LMU8"`W!S975D;U]O<G!H86YS+G1X=`!54KMRW#`,[/45&%_C)*;'
 MKRI-QJ6[%/D!B,))T/$5$M19_GI#4G0YSZC@+A9++*@#_!D(CM&Y>.;00T)[
 MPIX*E"%6UT%+4%.?L:,.)(*HV*%0$9@H%XX!.*PL9COP1'?-`6@BI8\K_5_5
 ML5T:E>4"^B%T\1Q6ZSN]QF(M]*4E5-]2UJ'44O6>2M$A:KH'>(,^RN;D6&=I
@@ -422,8 +358,6 @@ SHAR_EOF
 ${echo} gunzipping file pseudo_orphans.txt &&
 
 gzip -dc ${lock_dir}/gzi > 'pseudo_orphans.txt' && \
-  (set 20 17 06 18 16 28 15 'pseudo_orphans.txt'
-   eval "${shar_touch}") && \
   chmod 0664 'pseudo_orphans.txt'
 if test $? -ne 0
 then ${echo} "restore of pseudo_orphans.txt failed"
@@ -439,17 +373,11 @@ else
 test `LC_ALL=C wc -c < 'pseudo_orphans.txt'` -ne 725 && \
   ${echo} "restoration warning:  size of 'pseudo_orphans.txt' is not 725"
   fi
-fi
 # ============= pick_cran_mirror.py ==============
-if test -n "${keep_file}" && test -f 'pick_cran_mirror.py'
-then
-${echo} "x - SKIPPING pick_cran_mirror.py (file already exists)"
-
-else
 ${echo} "x - extracting pick_cran_mirror.py gzipped"
   sed 's/^X//' << 'SHAR_EOF' | uudecode &&
-begin 600 _sh14987/gzi
-M'XL("`^<1ED"`W!I8VM?8W)A;E]M:7)R;W(N<'D`A5AM;]LX$OX<_0K605$)
+begin 600 _sh10570/gzi
+M'XL(".>LMU8"`W!I8VM?8W)A;E]M:7)R;W(N<'D`A5AM;]LX$OX<_0K605$)
 MD.4XZ0)ML.FAZ76+8-NT2-,M%ME`H"7:YH46M21MQ_?K[QE2DB5?V@U:0Q*'
 M,\^\#WG\;+*V9C*3U414&U;OW%)7T7$MBX>\,+S*5](8;;)ZQ\:L,(([4;+O
 M^/^)[]CI*S9]?3Y]=7XZ99=?;]GIR?1E%!VS2U'PM17LADG+K&:\KKE2LEJH
@@ -508,8 +436,6 @@ SHAR_EOF
 ${echo} gunzipping file pick_cran_mirror.py &&
 
 gzip -dc ${lock_dir}/gzi > 'pick_cran_mirror.py' && \
-  (set 20 17 06 18 16 28 15 'pick_cran_mirror.py'
-   eval "${shar_touch}") && \
   chmod 0775 'pick_cran_mirror.py'
 if test $? -ne 0
 then ${echo} "restore of pick_cran_mirror.py failed"
@@ -525,17 +451,11 @@ else
 test `LC_ALL=C wc -c < 'pick_cran_mirror.py'` -ne 5490 && \
   ${echo} "restoration warning:  size of 'pick_cran_mirror.py' is not 5490"
   fi
-fi
 # ============= bio-linux-keyring.deb ==============
-if test -n "${keep_file}" && test -f 'bio-linux-keyring.deb'
-then
-${echo} "x - SKIPPING bio-linux-keyring.deb (file already exists)"
-
-else
 ${echo} "x - extracting bio-linux-keyring.deb gzipped"
   sed 's/^X//' << 'SHAR_EOF' | uudecode &&
-begin 600 _sh14987/gzi
-M'XL("`^<1ED"`V)I;RUL:6YU>"UK97ER:6YG+F1E8@"-=V5,'0"S)>[N?G%W
+begin 600 _sh10570/gzi
+M'XL(".>LMU8"`V)I;RUL:6YU>"UK97ER:6YG+F1E8@"-=V5,'0"S)>[N?G%W
 M=W=W+5#<W=W=78H4*^[%Y0*EN$-QIT!QYR(7[OMVD_=^;#;9/3F99&9R_IV3
 MS%")6GA:V8NC6-M8.EBXLEDZN%IX!E!24G+Q\O)Q\W$+"G!24OZ'E/]=N3@Y
 M^7EY*2EY*?\;7U&XV3E1K-Q<O3W=G-F]+3S9[0+_WWI^?H'_T0.2D*#^%V!@
@@ -754,8 +674,6 @@ SHAR_EOF
 ${echo} gunzipping file bio-linux-keyring.deb &&
 
 gzip -dc ${lock_dir}/gzi > 'bio-linux-keyring.deb' && \
-  (set 20 17 06 18 16 28 15 'bio-linux-keyring.deb'
-   eval "${shar_touch}") && \
   chmod 0664 'bio-linux-keyring.deb'
 if test $? -ne 0
 then ${echo} "restore of bio-linux-keyring.deb failed"
@@ -771,17 +689,11 @@ else
 test `LC_ALL=C wc -c < 'bio-linux-keyring.deb'` -ne 9578 && \
   ${echo} "restoration warning:  size of 'bio-linux-keyring.deb' is not 9578"
   fi
-fi
 # ============= upgrade_to_8.sh ==============
-if test -n "${keep_file}" && test -f 'upgrade_to_8.sh'
-then
-${echo} "x - SKIPPING upgrade_to_8.sh (file already exists)"
-
-else
 ${echo} "x - extracting upgrade_to_8.sh gzipped"
   sed 's/^X//' << 'SHAR_EOF' | uudecode &&
-begin 600 _sh14987/gzi
-M'XL("`^<1ED"`W5P9W)A9&5?=&]?."YS:`#56VM[V[:2_ES]"D1V(ML5J3A-
+begin 600 _sh10570/gzi
+M'XL("-*MMU8"`W5P9W)A9&5?=&]?."YS:`#56VM[V[:2_ES]"D1V(ML5J3A-
 MFZQ;)\>.G<2[KNW'E_;DB5,;(B$)%44R`&E93;*_?=\9@"+E2YIS=K^LG[:2
 M2&`PF.L[`W3I0:^OTUY?VE%K29R.M!7XIQ@IL:VS8%^GY;5X+LH\EH42-C(Z
 M+T(A]@H1JUREL159*J08J*D8Z$19,1WI:"0BF8):7PF=1DD9JUCT9R*7T5@7
@@ -913,8 +825,6 @@ SHAR_EOF
 ${echo} gunzipping file upgrade_to_8.sh &&
 
 gzip -dc ${lock_dir}/gzi > 'upgrade_to_8.sh' && \
-  (set 20 17 06 18 16 28 15 'upgrade_to_8.sh'
-   eval "${shar_touch}") && \
   chmod 0775 'upgrade_to_8.sh'
 if test $? -ne 0
 then ${echo} "restore of upgrade_to_8.sh failed"
@@ -930,7 +840,6 @@ else
 test `LC_ALL=C wc -c < 'upgrade_to_8.sh'` -ne 13419 && \
   ${echo} "restoration warning:  size of 'upgrade_to_8.sh' is not 13419"
   fi
-fi
 if rm -fr ${lock_dir}
 then ${echo} "x - removed lock directory ${lock_dir}."
 else ${echo} "x - failed to remove lock directory ${lock_dir}."

@@ -1,0 +1,161 @@
+--- casper	2017-07-26 10:42:20.259251000 +0100
++++ casper_expected	2017-07-26 11:54:07.319220027 +0100
+@@ -386,52 +386,11 @@
+     image_directory="$1"
+     rootmnt="$2"
+ 
+-    # Mount up the writable layer, if it is persistent then it may well
+-    # tell us what format we should be using.
+-    mkdir -p /cow
+-    cowdevice="tmpfs"
+-    cow_fstype="tmpfs"
+-    cow_mountopt="rw,noatime,mode=755"
+-
+-    # Looking for "${root_persistence}" device or file
+-    if [ -n "${PERSISTENT}" ]; then
+-        cowprobe=$(find_cow_device "${root_persistence}")
+-        if [ -b "${cowprobe}" ]; then
+-            cowdevice=${cowprobe}
+-            cow_fstype=$(get_fstype "${cowprobe}")
+-            cow_mountopt="rw,noatime"
+-        else
+-            [ "$quiet" != "y" ] && log_warning_msg "Unable to find the persistent medium"
+-        fi
+-    fi
+-
+-    mount -t ${cow_fstype} -o ${cow_mountopt} ${cowdevice} /cow || panic "Can not mount $cowdevice on /cow"
+-
+-    # Work out if this is an existing persistance partition and if so
+-    # move its existing "upper" into a new upper directory.
+-    if [ ! -d /cow/upper ]; then
+-        mkdir -p /cow/upper
+-        for cow_content in /cow/*
+-        do
+-            case "$cow_content" in
+-            /cow/lost+found|/cow/upper)     continue ;;
+-            esac
+-
+-            mv "$cow_content" /cow/upper
+-
+-            # We have no format information, so fake some up.  If they
+-            # have not specified any then we simply assume it was
+-            # overlayfs (V1 format).
+-            cow_write_format "overlayfs" /cow/format
+-        done
+-    fi
+-    mkdir -p /cow/work
+-
+-    # Look and see if we have a current format, it is essential we use
+-    # a compatible format.  Relies on the recovery above having cleaned
+-    # out the top level.
+-    [ -f /cow/format ] && . /cow/format
+-
++    
++    
++    
++    
++    
+     # See if we have the appropriate format, pick the first one if
+     # unspecified.
+     if [ "${UNIONFS}" = 'DEFAULT' ]; then
+@@ -461,6 +420,13 @@
+         fi
+     fi 
+ 
++    
++    
++    
++    
++    
++    
++    
+     # run-init can't deal with images in a subdir, but we're going to
+     # move all of these away before it runs anyway.  No, we're not,
+     # put them in / since move-mounting them into / breaks mono and
+@@ -507,6 +473,72 @@
+     done
+     rofsstring=${rofsstring%:}
+ 
++    
++    
++      
++    # Mount up the writable layer, if it is persistent then it may well
++    # tell us what format we should be using.
++    mkdir -p /cow
++    cowdevice="tmpfs"
++    cow_fstype="tmpfs"
++    cow_mountopt="rw,noatime,mode=755"
++
++    # Looking for "${root_persistence}" device or file
++    if [ -n "${PERSISTENT}" ]; then
++        cowprobe=$(find_cow_device "${root_persistence}")
++        if [ -b "${cowprobe}" ]; then
++            cowdevice=${cowprobe}
++            cow_fstype=$(get_fstype "${cowprobe}")
++            cow_mountopt="rw,noatime"
++        else
++            [ "$quiet" != "y" ] && log_warning_msg "Unable to find the persistent medium"
++        fi
++    fi
++
++    mount -t ${cow_fstype} -o ${cow_mountopt} ${cowdevice} /cow || panic "Can not mount $cowdevice on /cow"
++
++    
++    
++    
++    
++    
++    
++    
++    
++    # Work out if this is an existing persistance partition and if so
++    # move its existing "upper" into a new upper directory.
++    if [ ! -d /cow/upper ]; then
++        mkdir -p /cow/upper
++        for cow_content in /cow/*
++        do
++            case "$cow_content" in
++            /cow/lost+found|/cow/upper)     continue ;;
++            esac
++
++            mv "$cow_content" /cow/upper
++
++            # We have no format information, so fake some up.  If they
++            # have not specified any then we simply assume it was
++            # overlayfs (V1 format).
++            cow_write_format "overlayfs" /cow/format
++        done
++    fi
++    mkdir -p /cow/work
++
++    # Look and see if we have a current format, it is essential we use
++    # a compatible format.  Relies on the recovery above having cleaned
++    # out the top level.
++    [ -f /cow/format ] && . /cow/format
++
++    
++    
++    
++    
++    
++    
++    
++    
++    
+     # Record the format we are using for this mount.
+     [ ! -f /cow/format ] && cow_write_format "${UNIONFS}" /cow/format
+     case ${UNIONFS} in
+@@ -542,6 +574,13 @@
+             ;;
+     esac
+ 
++    
++    
++    
++    
++    
++    
++    
+     # Adding other custom mounts
+     if [ -n "${PERSISTENT}" ]; then
+         # directly mount /home

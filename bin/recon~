@@ -2,6 +2,7 @@
 
 # set parameters
 ISOBASE="bio-linux"
+HOME=/home/manager
 #BURNISO="n"
 DEVICE=/dev/sr1
 #symbolic link to the actual working directory
@@ -81,7 +82,7 @@ cd $ROOT
 #sudo chroot root sed -i "/bio\-linux\.version/s/\".*\"/\"$VERSION\"/" /etc/init.d/biolinuxfirstboot
 sudo sh -c "echo \"$VERSION\" > root/etc/bio-linux.version"
 # update MOTD manually for now.
- 
+
 #updatedb
 echo "=== Running mlocate database update ==="
 sudo chroot root/ /etc/cron.daily/mlocate
@@ -102,14 +103,6 @@ if [ -f "$newinitrd" ] ; then
 	sudo rm $newinitrd
 fi
 
-echo "Applying customizations"
-#patch casper script to allow use of persistence using a partition 
-sudo patch $HOME/reconstructor/initrd/scripts/casper < $HOME/bl8bits/initrd_patches/casper.patch
-#only display errors in usb checker -- change has no effect
-#sudo patch $HOME/reconstructor/initrd/scripts/casper-bottom/01integrity_check < $HOME/bl8bits/initrd_patches/01integrity_check.patch
-#protect fat partition from corruption when usb removed without being ejected
-sudo patch $HOME/reconstructor/initrd/scripts/casper-bottom/43disable_updateinitramfs < $HOME/bl8bits/initrd_patches/43disable_updateinitramfs.patch
-
 #Similarly for the vmlinuz kernel image, but no need to unpack
 newvmlinuz="`echo $ROOT/root/boot/vmlinuz-*.efi.signed`"
 
@@ -120,7 +113,6 @@ if [ -f "$newvmlinuz" ] ; then
     sudo cat "$newvmlinuz" > "$ROOT/remaster/casper/vmlinuz.efi"
     sudo rm "$newvmlinuz" "$ROOT/root/boot/"`basename "$newvmlinuz" .efi.signed`
 fi
-
 
 cd $ROOT/initrd
 echo "Repacking initrd..."
@@ -141,10 +133,8 @@ if [ -f remaster/casper/filesystem.squashfs ]; then
     rm -f remaster/casper/filesystem.squashfs
 fi
 
-echo  "TMP: maksquashfs"
 sudo mksquashfs root remaster/casper/filesystem.squashfs
 sudo chown --reference=remaster/casper remaster/casper/filesystem.squashfs
-echo "TMP: done"
 
 #Calculate filesystem.size, which appears to be approx the total size of the squshfs
 #plus 300_000_000.  I'm not sure how they actually calculate it, but this method

@@ -15,7 +15,7 @@ if [ -z "${ROOT:-}" ] ; then
     exit 1
 fi
 
-ocr="$HOME"/bl8bits/bin/openchroot
+ocr="$HOME"/bin/openchroot
 if [ ! -x "$ocr" ] ; then
     echo '!'" No executable $ocr.  Can't continue"
     exit 1

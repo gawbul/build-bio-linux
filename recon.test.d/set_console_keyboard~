@@ -35,7 +35,7 @@ fi
 echo "~ Setting layout"
 sudo sed -i 's/^XKBLAYOUT=.*/XKBLAYOUT="gb"/' "$filetocheck"
 
-~/bl8bits/bin/openchroot <<.
+~/bin/openchroot <<.
 echo set keyboard-configuration/layout 'English (UK)' | debconf-communicate
 echo set keyboard-configuration/variant 'English (UK)' | debconf-communicate
 echo set keyboard-configuration/xkb-keymap 'gb' | debconf-communicate

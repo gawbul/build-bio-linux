@@ -21,4 +21,4 @@ cd "${ROOT}/root/etc"
 
 echo "~ Adding missing link"
 sudo rm -f resolv.conf
-sudo ln -s ../run/resolvconf/resolv.conf .
+ln -s ../run/resolvconf/resolv.conf .

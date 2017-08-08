@@ -1,0 +1,1 @@
+A small fix to the usb maker which stops casper-rw overlapping with the fat backup. This will produce errors in fsck and gdisk however does not interfere with normal usage. This is currently not on the ppa or repository and is here for anyone who wishes to install it. This update does not allow it to be used on more recent versions of ubuntu. 

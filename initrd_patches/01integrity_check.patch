@@ -1,0 +1,11 @@
+--- 01integrity_check	2017-07-27 12:11:27.959819000 +0100
++++ 01integrity_check_expected	2017-08-06 17:06:14.812999328 +0100
+@@ -16,7 +16,7 @@
+ esac
+ 
+ if grep -q integrity-check /proc/cmdline; then
+-	casper-md5check /cdrom /cdrom/md5sum.txt < /dev/tty8 > /dev/tty8
++	casper-md5check /cdrom /cdrom/md5sum.txt < /dev/tty8 | fgrep -v -e 'verifying' -e 'OK' > /dev/tty8 
+ 	reboot
+ 	while :; do sleep 60; done
+ fi

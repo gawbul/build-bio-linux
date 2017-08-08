@@ -1,0 +1,171 @@
+Changelog:
+    Build process:
+        - Zsh exclusive commands now have a bash alternative listed under, all other commands can be executed in either bash or zsh.
+        - Indentation for readability. This will not affect the copy/pasting of commands. In instances where it would it has been left out.        
+        - Doesn't have to be run from an account called 'manager'
+        - use of '~' has been replaced with $HOME
+        - added [enter chroot] and [exit chroot] with separate indentation to clarify when to be in chroot
+    Bio-Linux:
+        - Updated Ubuntu base from 14.04.2 to 14.04.5
+        - Optional local .deb to stop usb maker from overlapping partitions
+        - Removed broken splash from liveUSB self checker
+        - Forced liveUSB fat partition to mount read only so that it doesn't become corrupted when usb removed prematurely
+        - Added the following programs:
+            - mdadm
+            - rkhunter
+            - chkrootkit
+
+Requirements:
+
+    # Ubuntu >=14.04
+    # Ubuntu 14.04.5 iso in home directory
+    wget -c http://releases.ubuntu.com/trusty/ubuntu-14.04.5-desktop-amd64.iso
+
+    # The following packages must be installed
+    sudo apt install squashfs-tools
+
+Build process:
+
+1) Set up the build machine and unpack the ISO
+2) Log into the ISO and make some changes
+3) Install the master package list, as used by the upgrade8.sh script
+4) Install a couple of extra things just for the ISO
+5) Remaster and publish
+6) Auto-build the .ova (with Packer) - not described here, see README    
+
+1))) Initial unpacking.
+
+    # commands marked with [zsh] have their [bash] equivalents below. Use 'echo $0' to check which one to use
+    # Rename this git repo folder to Bl8bits if it isn't already -- many of the scripts rely on this
+    # use a $HOME instead of ~. this should already be set to your home directory by linux
+    echo $HOME
+    # if this isn't set for some reason, set it with:
+    HOME = '/home/username/'
+
+    # Check the actual latest ISO at http://releases.ubuntu.com/trusty as the auto-download
+    # URL no longer works
+
+
+    #[zsh] 
+    mkdir reconstructor && cd !#1
+    #[bash] 
+    mkdir reconstructor && cd reconstructor
+     
+    mkdir initrd remaster root original_cd_image
+
+    sudo mkdir /mnt/cdrom1
+
+    sudo mount -t auto -o loop $HOME/ubuntu-14.04*-desktop-amd64.iso /mnt/cdrom1
+
+    rsync -av /mnt/cdrom1/ $HOME/reconstructor/remaster/
+
+    chmod -R u+w remaster
+
+    rsync -av /mnt/cdrom1/ $HOME/reconstructor/original_cd_image/
+
+    chmod -R a-w original_cd_image
+
+    sudo umount /mnt/cdrom1
+
+    # Taken from 12.04 instruction
+    cd ./initrd
+
+    sudo bash -c "lzcat -Slz $HOME/reconstructor/remaster/casper/initrd.lz | cpio -i"
+
+    # Unpack root fs
+    cd ../root
+
+    mkdir ../squashmount
+
+    sudo mount -t squashfs -o loop,ro $HOME/reconstructor/remaster/casper/filesystem.squashfs ../squashmount/
+
+    sudo rsync -av ../squashmount/ .
+
+    sudo umount ../squashmount
+
+    rmdir ../squashmount
+
+2))) Non-packaged customisations
+
+    # Review biolinuxfirstboot. Note this is checked by recon.test.d but not auto-fixed.
+    sudo cp $HOME/bl8bits/biolinuxfirstboot $HOME/reconstructor/root/etc/init.d/
+
+    #[zsh] 
+    for rc in 1 2 ; sudo ln -s $HOME/reconstructor/root/etc/init.d/biolinuxfirstboot $HOME/reconstructor/root/etc/rc${rc}.d/S99biolinuxfirstboot
+    #[bash]
+    for rc in 1 2 ; do sudo ln -s $HOME/reconstructor/root/etc/init.d/biolinuxfirstboot $HOME/reconstructor/root/etc/rc$rc.d/S99biolinuxfirstboot; done
+
+    # Everything else here should be at least checked by recon.test.d, and ideally fixed automagically.
+    # Details about those changes are in the 14.04 build process.
+
+3))) Packages
+
+    # First do a regular dist-upgrade.
+
+    sudo apt update && sudo apt dist-upgrade
+
+    # [Enter chroot]
+    ~/bl8bits/bin/openchroot
+
+        apt-get update && apt-get dist-upgrade
+
+        # Run
+        apt-get autoremove --purge
+
+    # [Exit chroot]
+
+    # back up sources.list
+    sudo cp $HOME/reconstructor/root/etc/apt/sources.list $HOME/reconstructor/root/etc/apt/sources.list.orig
+    
+    # activate the universe and multiverse
+    sudo tee $HOME/reconstructor/root/etc/apt/sources.list < $HOME/bl8bits/sources.list 
+
+    #Then run the upgrade_to_8 script. This will take some time, although requires user input partway through
+    cp $HOME/bl8bits/upgrade_to_8/upgrade8.sh $HOME/reconstructor/root/tmp/ \
+    && $HOME/bl8bits/bin/openchroot <<<'sh /tmp/upgrade8.sh'
+
+    # /proc is busy so reboot before remastering
+    # [OPTIONAL] move bio-linux-usb for install within chroot
+    sudo cp $HOME/bl8bits/Bio-linux-usb-maker/bio-linux-usb-maker_8.2-2_all.deb $HOME/reconstructor/root/var/cache/apt/archives/
+
+    # [Enter chroot]
+    $HOME/bl8bits/bin/openchroot
+
+        # Google patch. Needs all lines starting from cat up to and including EOT:
+cat << EOT > /etc/apt/sources.list.d/google-chrome.list
+### THIS FILE IS AUTOMATICALLY CONFIGURED ###
+# You may comment out this entry, but any other modifications may be lost.
+deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main
+EOT
+
+    #apt upate may produce "W: There is no public key available for the following key IDs:", most likely for id 1397BC53640DB551 (which is for google). To resolve:
+        sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 1397BC53640DB551
+
+        apt-get update
+
+        apt-get install bio-linux-fixups
+
+        #[OPTIONAL] install bio-linux-usb-maker within chroot
+        dpkg -i /var/cache/apt/archives/bio-linux-usb-maker_8.2-2_all.deb
+
+4))) Building the ISO
+
+        # recon runs all the tests in recon.test.d, which can be hard to please. These are all the issues I encountered
+        apt install exim4 ufw gufw
+
+        # remove unwanted packages
+        apt-get remove example-content aisleriot --auto-remove --purge
+
+        # Purge any packages marked 'rc'
+        sudo apt purge $(dpkg -l | awk '/^rc/{print $2}') 
+
+        apt-get autoremove --purge
+    
+    # [Exit chroot]
+    # remove wubi and autorun
+    rm $HOME/reconstructor/remaster/wubi.exe $HOME/reconstructor/remaster/autorun.inf
+
+    # Run recon script. This will need to be run a few times before it completes. 
+    # replace 8.0.8 with an appropriate version number if necessary.
+    ~/bl8bits/bin/recon 8.0.8
+

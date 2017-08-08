@@ -15,4 +15,4 @@ if [ ! -x ~/bl8bits/bin/openchroot ] ; then
     exit 1
 fi
 
-[ `echo 'dpkg -l' | ~/bl8bits/bin/openchroot | grep linux-headers- | wc -l` = 3 ]
+[ `echo 'dpkg -l' | openchroot | grep linux-headers- | wc -l` = 3 ]

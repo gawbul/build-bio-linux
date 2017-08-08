@@ -4,7 +4,7 @@
 use warnings;
 use strict;
 
-chdir ("/home/manager/packages/");
+chdir ("$HOME/packages/");
 print "(o)Reading list of directories\n";
 opendir (SOFTWARE, "./") or die "Error in opendir: $!\n";
 my @package_list = grep !/^\./, readdir SOFTWARE;

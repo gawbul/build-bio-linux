@@ -2,7 +2,7 @@
 
 # List packages on the image
 
-root=/home/manager/reconstructor/root
+root=$HOME/reconstructor/root
 mode=$1 
 
 case "$mode" in

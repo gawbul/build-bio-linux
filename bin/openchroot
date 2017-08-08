@@ -1,6 +1,6 @@
 #!/bin/bash
 #Define the users home directory and the default build path 
-ROOTHOME=/home/manager
+ROOTHOME=$HOME
 WORKING=$ROOTHOME/reconstructor
 #Canonicalise
 WORKING="`( cd \"$WORKING\" ; pwd -P )`"
