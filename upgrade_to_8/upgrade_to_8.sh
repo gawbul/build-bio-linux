@@ -289,6 +289,9 @@ if [ $? != 0 ] ; then
     exit 1
 fi
 
+echo "Removing build-host RAID's from mdadm config"
+sed -i '/^ARRAY/d' /etc/mdadm/mdadm.conf
+
 echo "Scrubbing Java6 packages now we have 7 as default"
 apt-get remove -y --purge openjdk-6-jre{,-lib,-headless}
 
