@@ -1,4 +1,10 @@
 #!/bin/bash
+#@(#)openchroot.sh  2017-09-05  Last modified by A.J.Travis
+
+#
+# Tim Booth's "openchroot"
+#
+
 #Define the users home directory and the default build path 
 ROOTHOME=$HOME
 WORKING=$ROOTHOME/reconstructor
@@ -66,6 +72,7 @@ echo "If you removed packages, did you remember to run apt-get autoremove too?"
 sudo rm -f "$WORKING"/root/etc/resolv.conf
 sudo mv "$WORKING"/root/etc/resolv.conf~ "$WORKING"/root/etc/resolv.conf
 sudo umount "$WORKING"/root/dev/pts
-sudo umount "$WORKING"/root/proc/ "$WORKING"/root/sys/ 
+sudo umount "$WORKING"/root/sys/
+sudo umount "$WORKING"/root/proc/ 
 
 echo "Done"
