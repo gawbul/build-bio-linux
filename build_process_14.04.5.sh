@@ -1,5 +1,5 @@
 #!/bin/bash -f
-#@(#)build_process_14.04.5.sh  2017-08-20  W.McCaffery and A.J.Travis
+#@(#)build_process_14.04.5.sh  2017-09-05  W.McCaffery and A.J.Travis
 
 # 
 # Changelog  2017-08-19  last modified by A.J.Travis
@@ -51,10 +51,13 @@ if [ ! -n $HOME ]; then
 fi
 
 # check the build scripts are available
-if [ ! -d bl8bits ]; then
-    echo "build_process: Error 'bl8bits' not available"
+if [ ! -d $HOME/bl8bits ]; then
+    echo "build_process: Error \'$HOME/bl8bits\' not available"
     exit
 fi
+
+# use a non-interactive APT front-end
+export DEBIAN_FRONTEND=noninteractive
 
 # update the host OS if necessary
 if [ -z "$(find -H /var/lib/apt/lists -maxdepth 0 -mtime -1)" ]; then
@@ -72,7 +75,8 @@ echo "build_process: ISO = $ISO"
 
 # download the .iso
 if [ ! -f $ISO ]; then
-    wget http://releases.ubuntu.com/trusty/$ISO
+    echo "build_process: downloading $ISO ..."
+    wget -nv http://releases.ubuntu.com/trusty/$ISO
 fi
 
 # unpack the .iso
@@ -165,10 +169,19 @@ $HOME/bl8bits/bin/openchroot <<EOF
     apt-get -y dist-upgrade
 
     # make sure only the most recent Linux kernel is installed
-    purge=\$(dpkg -l | awk '/linux-image-[0-9]/{print \$2}' | sed '\$d')
-    if [ -n \$purge ]; then
+    purge=\$(dpkg -l | awk '/linux-image-[0-9]+/{print \$2}' | head -n -1)
+    if [ \$(echo \$purge | wc -w) > 1 ]; then
         apt-get -y purge \$purge
     fi
+
+    # make sure only the most recent kernel headers are installed
+    purge=\$(dpkg -l | awk '/linux-headers-[0-9]+/{print \$2}' | head -n -3)
+    if [ \$(echo \$purge | wc -w) > 1 ]; then
+        apt-get -y purge \$purge
+    fi
+
+    # required by "mdadm" [postfix is installed by default]
+    apt-get -y install exim4
 
     #
     # run Tim's upgrade_to_8 script
@@ -183,7 +196,7 @@ $HOME/bl8bits/bin/openchroot <<EOF
     gdebi -n /var/cache/apt/archives/bio-linux-usb-maker_8.2-2_all.deb
 
     # required for recon.test.d, which can be hard to please...
-    apt-get -y install exim4 ufw gufw
+    apt-get -y install ufw gufw
 
     # remove unwanted packages
     apt-get -y remove example-content aisleriot --auto-remove --purge
