@@ -1,0 +1,104 @@
+New and shiny build notes for BL8.  Yay.  I'm not yet moving to a full auto-build
+mode as some things just don't fit.  However I am trying to push as much as possible
+into packages.  It it won't package I'll at least have a test in recon.test.d to spot
+if the fix needs reapplying.
+
+Things that won't package are:
+
+Build process - as before, it's broadly:
+
+1) Set up the build machine and unpack the ISO
+2) Log into the ISO and make some changes
+3) Install the master package list, as used by the upgrade8.sh script
+4) Install a couple of extra things just for the ISO
+5) Remaster and publish
+6) Auto-build the .ova (with Packer)
+
+1))) Initial unpacking.
+
+Ensure the machine is running Ubuntu 14.04
+
+#Check the actual latest ISO at http://releases.ubuntu.com/trusty as the auto-download
+#URL no longer works
+wget -c http://releases.ubuntu.com/trusty/ubuntu-14.04-desktop-amd64.iso
+
+mkdir reconstructor_bl7 && cd !#1
+mkdir initrd remaster root original_cd_image
+
+sudo mkdir /mnt/cdrom1
+sudo mount -t auto -o loop ~/ubuntu-14.04*-desktop-amd64.iso /mnt/cdrom1
+
+rsync -av /mnt/cdrom1/ ./remaster/
+chmod -R u+w remaster
+ 
+rsync -av /mnt/cdrom1/ ./original_cd_image/
+chmod -R a-w original_cd_image
+ 
+sudo umount /mnt/cdrom
+# Skip unpacking the initrd for now, as it just gets recreated by recon anyway.
+
+# Unpack root fs
+cd ./root
+mkdir ../squashmount
+sudo mount -t squashfs -o loop,ro ../remaster/casper/filesystem.squashfs ../squashmount/
+sudo rsync -av ../squashmount/ .
+sudo umount ../squashmount
+rmdir ../squashmount
+
+2))) Non-packaged customisations
+
+# Everything here should be at least checked by recon.test.d, and ideally fixed automagically.
+# As of 22/7, this should be done, so see the notes here and skip to 3
+
+# Openchroot now works (assuming you fixed the reconstructor symlink).  Yay.
+# Review biolinuxfirstboot...
+sudo cp ~/bl8bits/biolinuxfirstboot ~/reconstructor/root/etc/init.d/
+for rc in 1 2 ; sudo ln -s ../init.d/biolinuxfirstboot ~/reconstructor/root/etc/rc${rc}.d/S99biolinuxfirstboot
+# Note this is checked by recon.test.d but not auto-fixed.
+
+# Rebrand both the isolinux and Grub menus
+# Added this to recon.test.d.
+
+# Add root .profile?  Yes, but a red root prompt should also be set in bio-linux-zsh.
+# Added this to recon.test.d.  Note the image comes with .profile and .bashrc already in /root
+# and not owned by a package so it makes sense to edit these.
+
+# Now openchroot.  At a minimum I need to add the BL repo and the themes_v8 package, but I should be
+# able to do this with my upgrade_to_8 script.
+
+3))) Packages
+
+# First do a regular dist-upgrade.
+openchroot
+ apt-get update && apt-get dist-upgrade
+(as this updates the kernel we also get a new initrd!)
+
+# The Kernel fails to install.  Why?  Because Grub was updated and restored /usr/sbin/update_grub.
+# No probs - just drop out of chroot and back in, and retry.
+
+# activate the universe and multiverse
+#(software-properties-gtk no good in chroot)
+sudo tee ~/reconstructor/root/etc/apt/sources.list < ~/bl8bits/sources.list 
+
+# Then:
+wget -q -P ~/reconstructor/root/tmp http://nebc.nerc.ac.uk/downloads/bl8_only/upgrade8.sh \
+  && openchroot <<<'sh /tmp/upgrade8.sh'
+
+
+# Yep, amazingly that worked.  /proc is busy so reboot before remastering
+# also...
+apt-get install bio-linux-fixups
+
+# and purge the old 0-24 kernel
+dpkg -P ...
+
+4))) Building the ISO
+
+# Now run recon to activate all the fixes and see where we are at.
+~/bin/recon 8.0.0
+
+# Eek - too big!  Removed geneious, predictprotein and isacreator
+# and aisleriot.  Also ensured we use the recon.efi by default.
+# And added mlocate update on rebuild, and fixed removal of /etc/resolv.conf
+
+And we're looking pretty good...
